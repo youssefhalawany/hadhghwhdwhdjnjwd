@@ -929,11 +929,13 @@ import QRCode from "react-qr-code";
 import { toast } from "sonner";
 import { onAuthStateChanged } from "firebase/auth";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useBranch } from "@/context/BranchContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { syncProductsToMaster } from "@/lib/products-sync";
 import { playPrinterSound } from "@/lib/audioCues";
+import { getCompanyProfileUrl } from "@/lib/companiesLedgerService";
 
 function cleanPayload<T = any>(obj: any): T {
   if (obj === null || obj === undefined) return null as any;
@@ -1263,6 +1265,20 @@ export default function PaymentsRedesignPage() {
   const [showAddSupplier, setShowAddSupplier] = useState(false);
   const [qrCodeData, setQrCodeData] = useState("");
   const [bankTransferFile, setBankTransferFile] = useState<File | null>(null);
+
+  // Auto-fill from deep-linking (e.g. 1-Click Settle from Company Profile)
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const qComp = searchParams.get("companyName") || searchParams.get("company");
+    const qAmt = searchParams.get("amount");
+    const qInv = searchParams.get("invoice");
+    if (qComp) {
+      setCompanyName(qComp);
+      setShowAddModal(true);
+      if (qAmt) setAmount(qAmt);
+      if (qInv) setInvoiceNumber(qInv);
+    }
+  }, [searchParams]);
 
   // Goods Return / RTV Deduction Form State
   const [hasReturn, setHasReturn] = useState(false);
@@ -3790,17 +3806,28 @@ html, body {
                             <span className="w-7 h-7 rounded-lg bg-white/[0.05] border border-white/[0.08] text-rose-300 flex items-center justify-center font-black text-[10px]">
                               {pay.companyName ? pay.companyName.substring(0, 2).toUpperCase() : "NA"}
                             </span>
-                            <div>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedSupplierProfile(pay.companyName);
-                                }}
-                                className="font-bold text-white hover:text-rose-400 text-left transition-colors truncate max-w-[180px] block"
-                              >
-                                {pay.companyName}
-                              </button>
-                              <span className="text-[10px] text-slate-400">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <Link
+                                  href={getCompanyProfileUrl(pay.companyName)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="font-bold text-white hover:text-cyan-400 hover:underline text-left transition-colors truncate max-w-[170px] inline-block"
+                                  title={isAr ? "عرض ملف وسجل الشركة الشامل" : "Open Full Company Profile"}
+                                >
+                                  {pay.companyName}
+                                </Link>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedSupplierProfile(pay.companyName);
+                                  }}
+                                  className="text-[10px] text-slate-500 hover:text-rose-400 p-0.5 rounded transition-colors"
+                                  title={isAr ? "نظرة سريعة" : "Quick Stats"}
+                                >
+                                  ℹ️
+                                </button>
+                              </div>
+                              <span className="text-[10px] text-slate-400 block truncate">
                                 {CATEGORY_EMOJIS[pay.category]} {pay.category}
                               </span>
                             </div>
@@ -5897,6 +5924,13 @@ html, body {
                     {selectedSupplierProfile}
                   </h2>
                   <p className="text-sm font-medium text-slate-500 mt-1">Supplier Profile & Analytics</p>
+                  <Link
+                    href={getCompanyProfileUrl(selectedSupplierProfile)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 mt-2 text-xs font-bold rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 transition-colors"
+                  >
+                    <span>{isAr ? "فتح كشف الحساب والملف الشامل للشركة" : "Open Full Company Ledger & Profile"}</span>
+                    <span>→</span>
+                  </Link>
                 </div>
                 <button
                   onClick={() => setSelectedSupplierProfile(null)}

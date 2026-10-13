@@ -12,6 +12,7 @@ import { useBranch } from "@/context/BranchContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { DataTable } from "@/components/ui/DataTable";
 import { PageTransition } from "@/components/PageTransition";
+import { getCompanyProfileUrl } from "@/lib/companiesLedgerService";
 import { X, Sparkles, Zap, Bell, Check, ArrowRight } from "lucide-react";
 import { ExpiryDeckGrid } from './ExpiryDeckGrid';
 import { WasteAnalyticsPanel } from './WasteAnalyticsPanel';
@@ -1418,7 +1419,13 @@ export default function ExpiryAuditPage() {
                               <span className="bg-muted px-2 py-0.5 rounded-md font-mono">{item.barcode || "No Barcode"}</span>
                               <span>Store: <span className="font-semibold text-foreground">{item.storeId || "Unknown"}</span></span>
                               {item.supplier && (
-                                <span className="text-[11px] text-muted-foreground/80">• {item.supplier}</span>
+                                <Link
+                                  href={getCompanyProfileUrl(item.supplier)}
+                                  className="text-[11px] text-muted-foreground/80 hover:text-cyan-400 hover:underline transition-colors"
+                                  title={isAr ? "فتح ملف وسجل الشركة الشامل" : "Open Full Company Profile"}
+                                >
+                                  • {item.supplier}
+                                </Link>
                               )}
                             </div>
                           </div>
@@ -1641,7 +1648,19 @@ export default function ExpiryAuditPage() {
                         <td className="p-4">
                           <p className="font-bold text-sm">{item.itemName}</p>
                         </td>
-                        <td className="p-4 text-sm">{item.supplier || "-"}</td>
+                        <td className="p-4 text-sm">
+                          {item.supplier ? (
+                            <Link
+                              href={getCompanyProfileUrl(item.supplier)}
+                              className="font-bold text-foreground hover:text-cyan-400 hover:underline transition-colors"
+                              title={isAr ? "فتح ملف وسجل الشركة الشامل" : "Open Full Company Profile"}
+                            >
+                              {item.supplier}
+                            </Link>
+                          ) : (
+                            "-"
+                          )}
+                        </td>
                         <td className="p-4 text-xs font-bold uppercase text-muted-foreground">{item.status}</td>
                         <td className="p-4 text-sm font-mono text-foreground">
                           {item.allDates ? (

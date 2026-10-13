@@ -27,6 +27,16 @@ import {
   Package,
   Receipt,
   BadgeCheck,
+  Phone,
+  UserCheck,
+  Landmark,
+  TrendingUp,
+  PieChart,
+  ShieldCheck,
+  Eye,
+  Copy,
+  PlusCircle,
+  ArrowUpRight,
 } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { triggerHapticFeedback } from "@/lib/pwaBadges";
@@ -65,9 +75,10 @@ export default function CompaniesProfilesPage() {
   const [detailTab, setDetailTab] = useState<"all" | "payments" | "credits" | "returns" | "expiries">("all");
   const [detailQuery, setDetailQuery] = useState<string>("");
 
-  // Printable modal & detail modal
+  // Printable modal & detail modal & lightbox
   const [showStatementModal, setShowStatementModal] = useState<boolean>(false);
   const [selectedEventForPreview, setSelectedEventForPreview] = useState<CompanyEvent | null>(null);
+  const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null);
 
   // 1. Initial Load: Instant local cache load
   useEffect(() => {
@@ -583,6 +594,39 @@ export default function CompaniesProfilesPage() {
                       </div>
                     </div>
 
+                    {/* 1. Quick Financial Actions (1-Click Settle & New PO/Credit) */}
+                    <div className="flex flex-wrap items-center gap-2.5 pt-2 border-t border-white/5">
+                      {activeCompany.remainingCredit > 0 ? (
+                        <Link
+                          href={`/financials/inputs/payments?companyName=${encodeURIComponent(activeCompany.name)}&amount=${activeCompany.remainingCredit}`}
+                          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-rose-500 via-rose-600 to-amber-500 hover:from-rose-400 hover:to-amber-400 text-white font-black text-xs shadow-lg shadow-rose-500/20 transition-all cursor-pointer group"
+                        >
+                          <Zap className="w-3.5 h-3.5 fill-current text-white animate-pulse" />
+                          <span>{isAr ? "سداد الرصيد المستحق (1-Click Settle)" : "Settle Balance (1-Click)"}</span>
+                          <span className="px-2 py-0.5 rounded-md bg-black/30 font-mono text-[11px] text-white">
+                            {fmt(activeCompany.remainingCredit)} ج.م
+                          </span>
+                          <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                        </Link>
+                      ) : (
+                        <Link
+                          href={`/financials/inputs/payments?companyName=${encodeURIComponent(activeCompany.name)}`}
+                          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 font-bold text-xs transition-all cursor-pointer"
+                        >
+                          <Wallet className="w-3.5 h-3.5" />
+                          <span>{isAr ? "تسجيل سند سداد جديد" : "Log New Payment"}</span>
+                        </Link>
+                      )}
+
+                      <Link
+                        href={`/financials/inputs/credits?companyName=${encodeURIComponent(activeCompany.name)}`}
+                        className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.09] text-white border border-white/10 hover:border-white/20 font-bold text-xs transition-all cursor-pointer"
+                      >
+                        <PlusCircle className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>{isAr ? "تسجيل فاتورة آجل جديدة (New PO)" : "New Credit Invoice / PO"}</span>
+                      </Link>
+                    </div>
+
                     {/* Secondary pills for returns and expiries if present */}
                     {(activeCompany.totalReturnsValue > 0 || activeCompany.totalExpiriesValue > 0) && (
                       <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-white/5 text-xs text-slate-400">
@@ -607,6 +651,314 @@ export default function CompaniesProfilesPage() {
                         )}
                       </div>
                     )}
+                  </div>
+
+                  {/* 2. Verified Contacts & Delivery Reps & Banking Dossier */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Card A: Verified Contacts & Delivery Reps */}
+                    <div className="p-4 sm:p-5 rounded-2xl bg-[#0E1424] border border-white/[0.06] shadow-xl space-y-3">
+                      <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
+                        <div className="flex items-center gap-2 text-xs font-black text-white">
+                          <UserCheck className="w-4 h-4 text-cyan-400" />
+                          <span>{isAr ? "المندوبون وسائقو الاستلام المعتمدون" : "Verified Contacts & Delivery Reps"}</span>
+                        </div>
+                        <span className="text-[10px] font-mono text-slate-500 bg-white/[0.04] px-2 py-0.5 rounded-full">
+                          {activeCompany.contacts.length} {isAr ? "جهة اتصال" : "contacts"}
+                        </span>
+                      </div>
+
+                      {activeCompany.contacts.length === 0 ? (
+                        <div className="py-6 text-center text-slate-500 text-xs">
+                          <UserCheck className="w-6 h-6 mx-auto mb-1.5 text-slate-600" />
+                          <p className="font-medium">
+                            {isAr
+                              ? "يتم استخراج أرقام المندوبين والسائقين تلقائياً عند تسجيل السندات والمرتجعات"
+                              : "Contacts are auto-aggregated from payment & return receipts"}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2 max-h-56 overflow-y-auto no-scrollbar pr-1">
+                          {activeCompany.contacts.map((c, idx) => (
+                            <div
+                              key={`${c.name}_${idx}`}
+                              className="p-2.5 rounded-xl bg-[#090E1A] border border-white/[0.04] flex items-center justify-between gap-3 text-xs"
+                            >
+                              <div className="min-w-0 space-y-0.5">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold text-white truncate">{c.name}</span>
+                                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 font-bold whitespace-nowrap">
+                                    {c.role}
+                                  </span>
+                                </div>
+                                {c.nationalId && (
+                                  <p className="text-[10px] text-slate-400 font-mono">
+                                    {isAr ? "الرقم القومي: " : "National ID: "}
+                                    <span className="text-slate-300 font-bold">{c.nationalId}</span>
+                                  </p>
+                                )}
+                                {c.lastSeenDate && (
+                                  <p className="text-[9px] text-slate-500">
+                                    {isAr ? "آخر تعامل: " : "Last seen: "}
+                                    {c.lastSeenDate}
+                                  </p>
+                                )}
+                              </div>
+
+                              {c.phone ? (
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <a
+                                    href={`tel:${c.phone}`}
+                                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/25 font-mono font-bold text-[11px] transition-colors"
+                                    title={isAr ? "اتصال فوري" : "Call"}
+                                  >
+                                    <Phone className="w-3 h-3" />
+                                    <span>{c.phone}</span>
+                                  </a>
+                                  <button
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(c.phone || "");
+                                      triggerHapticFeedback(10);
+                                      toast.success(isAr ? "تم نسخ رقم الهاتف" : "Phone copied");
+                                    }}
+                                    className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+                                    title={isAr ? "نسخ الرقم" : "Copy"}
+                                  >
+                                    <Copy className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="text-[10px] text-slate-600 italic">{isAr ? "بدون هاتف" : "No phone"}</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Card B: Official Banking Dossier */}
+                    <div className="p-4 sm:p-5 rounded-2xl bg-[#0E1424] border border-white/[0.06] shadow-xl space-y-3">
+                      <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
+                        <div className="flex items-center gap-2 text-xs font-black text-white">
+                          <Landmark className="w-4 h-4 text-emerald-400" />
+                          <span>{isAr ? "الحساب البنكي والتحويلات الرقمية" : "Official Banking & Wire Transfer Dossier"}</span>
+                        </div>
+                        {activeCompany.bankingInfo?.lastTransferReceiptUrl && (
+                          <span className="flex items-center gap-1 text-[10px] font-bold text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/20">
+                            <ShieldCheck className="w-3 h-3" />
+                            <span>{isAr ? "إيصال مرفق" : "Receipt On File"}</span>
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="space-y-2 text-xs">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="p-2.5 rounded-xl bg-[#090E1A] border border-white/[0.04]">
+                            <span className="text-[10px] text-slate-500 block mb-0.5">{isAr ? "اسم البنك" : "Bank Name"}</span>
+                            <span className="font-bold text-white truncate block">
+                              {activeCompany.bankingInfo?.bankName || (isAr ? "غير محدد" : "Not specified")}
+                            </span>
+                          </div>
+
+                          <div className="p-2.5 rounded-xl bg-[#090E1A] border border-white/[0.04]">
+                            <span className="text-[10px] text-slate-500 block mb-0.5">{isAr ? "اسم المستفيد" : "Beneficiary"}</span>
+                            <span className="font-bold text-white truncate block">
+                              {activeCompany.bankingInfo?.beneficiaryName || activeCompany.name}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="p-2.5 rounded-xl bg-[#090E1A] border border-white/[0.04] flex items-center justify-between gap-2">
+                          <div>
+                            <span className="text-[10px] text-slate-500 block mb-0.5">{isAr ? "رقم الحساب / الآيبان" : "Account Number / IBAN"}</span>
+                            <span className="font-mono font-bold text-emerald-400 text-[11px] block">
+                              {activeCompany.bankingInfo?.accountNumber || (isAr ? "لم يُسجل بالتحويلات السابقة" : "Not logged")}
+                            </span>
+                          </div>
+                          {activeCompany.bankingInfo?.accountNumber && (
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(activeCompany.bankingInfo?.accountNumber || "");
+                                triggerHapticFeedback(10);
+                                toast.success(isAr ? "تم نسخ رقم الحساب" : "Account copied");
+                              }}
+                              className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+                              title={isAr ? "نسخ" : "Copy"}
+                            >
+                              <Copy className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="p-2.5 rounded-xl bg-[#090E1A] border border-white/[0.04] flex items-center justify-between">
+                          <div>
+                            <span className="text-[10px] text-slate-500 block">{isAr ? "إجمالي التحويلات البنكية المنفذة" : "Total Wire Transferred"}</span>
+                            <span className="font-black text-white text-sm">
+                              {fmt(activeCompany.bankingInfo?.totalTransferred || 0)} <span className="text-[10px] text-slate-500">ج.م</span>
+                            </span>
+                          </div>
+
+                          {activeCompany.bankingInfo?.lastTransferReceiptUrl && (
+                            <button
+                              onClick={() =>
+                                setPreviewImage({
+                                  url: activeCompany.bankingInfo!.lastTransferReceiptUrl!,
+                                  title: isAr ? `إشعار التحويل البنكي - ${activeCompany.name}` : `Bank Transfer Slip - ${activeCompany.name}`,
+                                })
+                              }
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[11px] font-bold transition-all cursor-pointer"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                              <span>{isAr ? "معاينة إيصال التحويل" : "View Transfer Slip"}</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 3. Vendor Spending & Payment Analytics */}
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                    {/* Monthly Spending Trend Chart */}
+                    <div className="lg:col-span-7 p-4 sm:p-5 rounded-2xl bg-[#0E1424] border border-white/[0.06] shadow-xl space-y-3">
+                      <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
+                        <div className="flex items-center gap-2 text-xs font-black text-white">
+                          <TrendingUp className="w-4 h-4 text-cyan-400" />
+                          <span>{isAr ? "حركة المشتريات والسداد الشهرية (آخر الفترات)" : "Monthly Purchases vs. Disbursements Trend"}</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-[10px] font-bold">
+                          <span className="flex items-center gap-1 text-amber-300">
+                            <span className="w-2 h-2 rounded-full bg-amber-400" />
+                            {isAr ? "التوريدات" : "Invoiced"}
+                          </span>
+                          <span className="flex items-center gap-1 text-emerald-300">
+                            <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                            {isAr ? "المسدد" : "Paid"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {activeCompany.monthlySpend.length === 0 ? (
+                        <div className="py-8 text-center text-slate-500 text-xs">
+                          <p>{isAr ? "لا توجد بيانات شهرية كافية للرسم البياني" : "Not enough monthly records for trend chart"}</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3 pt-2">
+                          {(() => {
+                            const points = activeCompany.monthlySpend.slice(-6); // last 6 active months
+                            const maxVal = Math.max(1, ...points.map((p) => Math.max(p.invoiced, p.paid)));
+                            return (
+                              <div className="space-y-2.5">
+                                {points.map((pt) => {
+                                  const invPct = Math.round((pt.invoiced / maxVal) * 100);
+                                  const paidPct = Math.round((pt.paid / maxVal) * 100);
+                                  return (
+                                    <div key={pt.month} className="space-y-1">
+                                      <div className="flex items-center justify-between text-[11px] font-mono">
+                                        <span className="font-bold text-slate-300">{pt.monthLabel}</span>
+                                        <span className="text-slate-400 text-[10px]">
+                                          {isAr ? "توريد: " : "Inv: "}
+                                          <span className="text-amber-400 font-bold">{fmt(pt.invoiced)}</span>
+                                          {" • "}
+                                          {isAr ? "سداد: " : "Paid: "}
+                                          <span className="text-emerald-400 font-bold">{fmt(pt.paid)}</span>
+                                        </span>
+                                      </div>
+                                      <div className="space-y-1">
+                                        {/* Invoiced Bar */}
+                                        <div className="h-2 w-full bg-slate-900 rounded-full overflow-hidden flex" title={`${isAr ? "توريدات: " : "Invoiced: "} ${fmt(pt.invoiced)} EGP`}>
+                                          <div
+                                            style={{ width: `${Math.max(pt.invoiced > 0 ? 2 : 0, invPct)}%` }}
+                                            className="h-full bg-gradient-to-r from-amber-500 to-amber-400 rounded-full transition-all duration-300"
+                                          />
+                                        </div>
+                                        {/* Paid Bar */}
+                                        <div className="h-2 w-full bg-slate-900 rounded-full overflow-hidden flex" title={`${isAr ? "مسدد: " : "Paid: "} ${fmt(pt.paid)} EGP`}>
+                                          <div
+                                            style={{ width: `${Math.max(pt.paid > 0 ? 2 : 0, paidPct)}%` }}
+                                            className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-300"
+                                          />
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Payment Methods Breakdown */}
+                    <div className="lg:col-span-5 p-4 sm:p-5 rounded-2xl bg-[#0E1424] border border-white/[0.06] shadow-xl space-y-3">
+                      <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
+                        <div className="flex items-center gap-2 text-xs font-black text-white">
+                          <PieChart className="w-4 h-4 text-purple-400" />
+                          <span>{isAr ? "توزيع طرق السداد (نقدي vs بنكي)" : "Payment Methods & Channel Split"}</span>
+                        </div>
+                      </div>
+
+                      {(() => {
+                        const total = activeCompany.totalPaid || 1;
+                        const cashPct = Math.round((activeCompany.paymentMethods.cash / total) * 100);
+                        const bankPct = Math.round((activeCompany.paymentMethods.bankTransfer / total) * 100);
+                        const chqPct = Math.round((activeCompany.paymentMethods.cheque / total) * 100);
+                        const digitalPct = bankPct + chqPct;
+
+                        return (
+                          <div className="space-y-4 pt-1 text-xs">
+                            {/* Progress Split Bar */}
+                            <div className="h-3 w-full bg-slate-900 rounded-full overflow-hidden flex gap-0.5">
+                              <div style={{ width: `${cashPct}%` }} className="bg-emerald-500 transition-all" title={`Cash: ${cashPct}%`} />
+                              <div style={{ width: `${bankPct}%` }} className="bg-cyan-500 transition-all" title={`Bank: ${bankPct}%`} />
+                              <div style={{ width: `${chqPct}%` }} className="bg-purple-500 transition-all" title={`Cheque: ${chqPct}%`} />
+                            </div>
+
+                            {/* Items */}
+                            <div className="space-y-2">
+                              <div className="p-2.5 rounded-xl bg-[#090E1A] border border-white/[0.04] flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                                  <span className="font-bold text-white">{isAr ? "نقداً من الخزينة" : "Cash (Safe)"}</span>
+                                </div>
+                                <div className="text-right rtl:text-left font-mono">
+                                  <span className="font-bold text-emerald-400">{fmt(activeCompany.paymentMethods.cash)} ج.م</span>
+                                  <span className="text-[10px] text-slate-500 ml-1.5 rtl:ml-0 rtl:mr-1.5">({cashPct}%)</span>
+                                </div>
+                              </div>
+
+                              <div className="p-2.5 rounded-xl bg-[#090E1A] border border-white/[0.04] flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className="w-2.5 h-2.5 rounded-full bg-cyan-400" />
+                                  <span className="font-bold text-white">{isAr ? "تحويل بنكي إلكتروني" : "Bank Transfer"}</span>
+                                </div>
+                                <div className="text-right rtl:text-left font-mono">
+                                  <span className="font-bold text-cyan-400">{fmt(activeCompany.paymentMethods.bankTransfer)} ج.م</span>
+                                  <span className="text-[10px] text-slate-500 ml-1.5 rtl:ml-0 rtl:mr-1.5">({bankPct}%)</span>
+                                </div>
+                              </div>
+
+                              <div className="p-2.5 rounded-xl bg-[#090E1A] border border-white/[0.04] flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className="w-2.5 h-2.5 rounded-full bg-purple-400" />
+                                  <span className="font-bold text-white">{isAr ? "شيكات بنكية" : "Cheques"}</span>
+                                </div>
+                                <div className="text-right rtl:text-left font-mono">
+                                  <span className="font-bold text-purple-400">{fmt(activeCompany.paymentMethods.cheque)} ج.م</span>
+                                  <span className="text-[10px] text-slate-500 ml-1.5 rtl:ml-0 rtl:mr-1.5">({chqPct}%)</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Digital vs Cash summary tag */}
+                            <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/5 flex items-center justify-between text-[11px]">
+                              <span className="text-slate-400">{isAr ? "نسبة الدفع الإلكتروني/البنكي:" : "Digital Disbursement:"}</span>
+                              <span className="font-black text-cyan-300 font-mono">{digitalPct}%</span>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
                   </div>
 
                   {/* Filter Tabs & Search Inside Company */}
@@ -1025,6 +1377,49 @@ export default function CompaniesProfilesPage() {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5. IMAGE RECEIPT LIGHTBOX MODAL */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div
+            className="bg-[#0E1424] border border-white/10 rounded-2xl max-w-2xl w-full p-4 text-white space-y-3 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-white/10 pb-2">
+              <h3 className="text-xs font-black text-white">{previewImage.title}</h3>
+              <button
+                onClick={() => setPreviewImage(null)}
+                className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-white/5 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-center max-h-[75vh] overflow-hidden rounded-xl bg-black/50 p-2">
+              <img
+                src={previewImage.url}
+                alt={previewImage.title}
+                className="max-h-[70vh] w-auto object-contain rounded-lg shadow-lg"
+              />
+            </div>
+
+            <div className="flex justify-end pt-1">
+              <a
+                href={previewImage.url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-xs font-bold text-slate-200 border border-white/10 transition-colors"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>{isAr ? "فتح بالحجم الكامل" : "Open Original"}</span>
+              </a>
             </div>
           </div>
         </div>

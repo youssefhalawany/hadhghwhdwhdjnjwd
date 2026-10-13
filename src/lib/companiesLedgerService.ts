@@ -49,6 +49,31 @@ export interface CompanyEvent {
   raw?: any;
 }
 
+export interface VendorContact {
+  name: string;
+  phone?: string;
+  nationalId?: string;
+  role: string;
+  lastSeenDate: string;
+}
+
+export interface VendorBankingInfo {
+  bankName?: string;
+  accountNumber?: string;
+  beneficiaryName?: string;
+  lastTransferDate?: string;
+  lastTransferReceiptUrl?: string;
+  totalTransferred: number;
+}
+
+export interface MonthlySpendPoint {
+  month: string; // e.g. "2026-05"
+  monthLabel: string;
+  paid: number;
+  invoiced: number;
+  returns: number;
+}
+
 export interface CompanyProfile {
   id: string; // normalized key
   name: string; // canonical display name
@@ -76,6 +101,9 @@ export interface CompanyProfile {
     cheque: number;
     other: number;
   };
+  contacts: VendorContact[];
+  bankingInfo?: VendorBankingInfo;
+  monthlySpend: MonthlySpendPoint[];
   events: CompanyEvent[];
 }
 
@@ -87,6 +115,11 @@ export interface CompaniesLedgerSummary {
   totalReturnsValue: number;
   totalExpiriesValue: number;
   lastSyncedAt: number;
+}
+
+export function getCompanyProfileUrl(rawName: string): string {
+  if (!rawName) return "/financials/companies-profiles";
+  return `/financials/companies-profiles?company=${encodeURIComponent(normalizeCompanyName(rawName))}`;
 }
 
 const CACHE_KEY = "companies_profiles_ledger_v1";
@@ -321,6 +354,16 @@ export async function syncCompaniesProfiles(
     canonicalName: string;
     aliases: Set<string>;
     events: CompanyEvent[];
+    contacts: Map<string, VendorContact>;
+    banking: {
+      bankName?: string;
+      accountNumber?: string;
+      beneficiaryName?: string;
+      lastTransferDate?: string;
+      lastTransferReceiptUrl?: string;
+      totalTransferred: number;
+    };
+    monthlyMap: Map<string, { paid: number; invoiced: number; returns: number }>;
   }>();
 
   const getOrCreate = (rawName: string) => {
@@ -334,6 +377,9 @@ export async function syncCompaniesProfiles(
         canonicalName: trimmed,
         aliases: new Set([trimmed]),
         events: [],
+        contacts: new Map(),
+        banking: { totalTransferred: 0 },
+        monthlyMap: new Map(),
       });
     }
 
@@ -362,6 +408,40 @@ export async function syncCompaniesProfiles(
     const grossAmount = Number(pay.grossAmount || (totalAmount + Number(pay.returnDeductionAmount || 0)));
     const returnDeduction = Number(pay.returnDeductionAmount || 0);
     const method = (pay.method || "cash").toLowerCase();
+
+    // Extract Representative & Contact
+    const repName = (pay.supplierRepName || "").trim();
+    if (repName && !repName.includes("التحويل للحساب") && !repName.includes("مندوب الشركة المعتمد")) {
+      const cKey = repName.toLowerCase();
+      if (!entry.contacts.has(cKey)) {
+        entry.contacts.set(cKey, {
+          name: repName,
+          phone: pay.supplierMobile || pay.repMobile || pay.phone || pay.mobile || undefined,
+          nationalId: pay.supplierNationalId || undefined,
+          role: "مندوب مبيعات وتحصيل",
+          lastSeenDate: date,
+        });
+      }
+    }
+
+    // Extract Banking Info
+    if (pay.bankName && !entry.banking.bankName) entry.banking.bankName = pay.bankName;
+    if (pay.bankAccountNumber && !entry.banking.accountNumber) entry.banking.accountNumber = pay.bankAccountNumber;
+    if (pay.beneficiaryName && !entry.banking.beneficiaryName) entry.banking.beneficiaryName = pay.beneficiaryName;
+    if (pay.bankTransferReceiptUrl) {
+      entry.banking.lastTransferReceiptUrl = pay.bankTransferReceiptUrl;
+      entry.banking.lastTransferDate = date;
+    }
+    if (method === "bank_transfer" || method === "bank" || pay.bankTransferReceiptUrl) {
+      entry.banking.totalTransferred += totalAmount;
+    }
+
+    // Accumulate Monthly Spend
+    if (date.length >= 7) {
+      const mKey = date.substring(0, 7);
+      if (!entry.monthlyMap.has(mKey)) entry.monthlyMap.set(mKey, { paid: 0, invoiced: 0, returns: 0 });
+      entry.monthlyMap.get(mKey)!.paid += totalAmount;
+    }
 
     let methodLabelAr = "نقداً";
     let methodLabelEn = "Cash";
@@ -419,6 +499,28 @@ export async function syncCompaniesProfiles(
     const paidAmount = Number(cred.paidAmount || 0);
     const isPaid = cred.status === "paid" || cred.isPaid === true || (paidAmount >= totalAmount && totalAmount > 0);
 
+    // Extract Representative & Contact from Credits if present
+    const credRep = (cred.supplierRepName || cred.repName || cred.agentName || "").trim();
+    if (credRep && !credRep.includes("مندوب")) {
+      const cKey = credRep.toLowerCase();
+      if (!entry.contacts.has(cKey)) {
+        entry.contacts.set(cKey, {
+          name: credRep,
+          phone: cred.supplierMobile || cred.repMobile || cred.mobile || cred.phone || undefined,
+          nationalId: cred.supplierNationalId || cred.nationalId || undefined,
+          role: "مندوب مبيعات وتوريد",
+          lastSeenDate: date,
+        });
+      }
+    }
+
+    // Accumulate Monthly Invoiced
+    if (date.length >= 7) {
+      const mKey = date.substring(0, 7);
+      if (!entry.monthlyMap.has(mKey)) entry.monthlyMap.set(mKey, { paid: 0, invoiced: 0, returns: 0 });
+      entry.monthlyMap.get(mKey)!.invoiced += totalAmount;
+    }
+
     entry.events.push({
       id: cred.id,
       type: "credit",
@@ -460,6 +562,13 @@ export async function syncCompaniesProfiles(
     const amt = Number(cp.amount || cp.total || 0);
     const method = (cp.method || "cash").toLowerCase();
 
+    // Accumulate Monthly Paid via credit settlements
+    if (date.length >= 7) {
+      const mKey = date.substring(0, 7);
+      if (!entry.monthlyMap.has(mKey)) entry.monthlyMap.set(mKey, { paid: 0, invoiced: 0, returns: 0 });
+      entry.monthlyMap.get(mKey)!.paid += amt;
+    }
+
     entry.events.push({
       id: cp.id,
       type: "credit_payment",
@@ -496,6 +605,28 @@ export async function syncCompaniesProfiles(
     const qty = Number(ret.quantity || 1);
     const price = Number(ret.totalPrice || ret.price || (Number(ret.unitPrice || 0) * qty) || 0);
     const isSettled = ret.status === "returned" || ret.isSettled === true;
+
+    // Extract Agent / Driver contact
+    const agentName = (ret.agentName || "").trim();
+    if (agentName) {
+      const cKey = agentName.toLowerCase();
+      if (!entry.contacts.has(cKey)) {
+        entry.contacts.set(cKey, {
+          name: agentName,
+          phone: ret.agentMobile || ret.mobile || ret.phone || undefined,
+          nationalId: ret.agentNationalId || ret.nationalId || undefined,
+          role: "سائق استلام / مندوب مرتجعات",
+          lastSeenDate: date,
+        });
+      }
+    }
+
+    // Accumulate Monthly Returns
+    if (date.length >= 7) {
+      const mKey = date.substring(0, 7);
+      if (!entry.monthlyMap.has(mKey)) entry.monthlyMap.set(mKey, { paid: 0, invoiced: 0, returns: 0 });
+      entry.monthlyMap.get(mKey)!.returns += price;
+    }
 
     entry.events.push({
       id: ret.id,
@@ -575,6 +706,9 @@ export async function syncCompaniesProfiles(
 
     const date = normalizeDate(chq.date || chq.dueDate || chq.createdAt) || new Date().toISOString().substring(0, 10);
     const amt = Number(chq.amount || 0);
+
+    if (chq.bankName && !entry.banking.bankName) entry.banking.bankName = chq.bankName;
+    if (chq.payee && !entry.banking.beneficiaryName) entry.banking.beneficiaryName = chq.payee;
 
     entry.events.push({
       id: chq.id,
@@ -677,6 +811,41 @@ export async function syncCompaniesProfiles(
     grandTotalReturnsValue += totalReturnsValue;
     grandTotalExpiriesValue += totalExpiriesValue;
 
+    // Contact List
+    const contacts: VendorContact[] = Array.from(data.contacts.values()).sort((a, b) =>
+      (b.lastSeenDate || "").localeCompare(a.lastSeenDate || "")
+    );
+
+    // Banking info
+    const bankingInfo: VendorBankingInfo | undefined =
+      data.banking.bankName ||
+      data.banking.accountNumber ||
+      data.banking.beneficiaryName ||
+      data.banking.totalTransferred > 0 ||
+      data.banking.lastTransferReceiptUrl
+        ? data.banking
+        : undefined;
+
+    // Chronological monthly spend points
+    const monthKeys = Array.from(data.monthlyMap.keys()).sort();
+    const monthlySpend: MonthlySpendPoint[] = monthKeys.map((mKey) => {
+      const [year, monthNum] = mKey.split("-");
+      const monthNames = [
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+      ];
+      const mIdx = parseInt(monthNum, 10) - 1;
+      const monthLabel = mIdx >= 0 && mIdx < 12 ? `${monthNames[mIdx]} ${year}` : mKey;
+      const mData = data.monthlyMap.get(mKey) || { paid: 0, invoiced: 0, returns: 0 };
+      return {
+        month: mKey,
+        monthLabel,
+        paid: mData.paid,
+        invoiced: mData.invoiced,
+        returns: mData.returns,
+      };
+    });
+
     profiles.push({
       id: normId,
       name: data.canonicalName,
@@ -699,6 +868,9 @@ export async function syncCompaniesProfiles(
       expiryCount,
       chequeCount,
       paymentMethods,
+      contacts,
+      bankingInfo,
+      monthlySpend,
       events: sortedEvents,
     });
   });

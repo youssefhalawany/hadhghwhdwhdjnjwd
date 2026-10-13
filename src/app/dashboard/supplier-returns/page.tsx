@@ -9,6 +9,7 @@ import { Truck, CheckCircle, Search, Calendar, FileText, ArrowLeft, Printer, Ale
 import Link from "next/link";
 import { PageTransition } from "@/components/PageTransition";
 import { ReturnReceiptContent, getReturnBranchDetails, formatArabicFullDate, numberToArabicWords } from "@/components/ReturnReceiptContent";
+import { getCompanyProfileUrl } from "@/lib/companiesLedgerService";
 
 export default function SupplierReturnsDashboard() {
   const { currentBranch } = useBranch();
@@ -698,7 +699,14 @@ export default function SupplierReturnsDashboard() {
                         >
                           <div>
                             <div className="flex justify-between items-start mb-4">
-                              <h3 className="font-black text-xl">{supplier}</h3>
+                              <Link
+                                href={getCompanyProfileUrl(supplier)}
+                                onClick={(e) => e.stopPropagation()}
+                                className="font-black text-xl hover:text-cyan-500 hover:underline transition-colors block"
+                                title={lang === "ar" ? "فتح ملف الشركة وسجلها الكامل" : "Open Full Company Profile"}
+                              >
+                                {supplier}
+                              </Link>
                               <span className="bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 text-xs font-bold px-2 py-1 rounded-full">{rItems.length} items</span>
                             </div>
                             <p className="text-sm font-semibold text-muted-foreground mb-4">Total Qty: <span className="text-foreground">{totalQty} units</span></p>
@@ -750,7 +758,14 @@ export default function SupplierReturnsDashboard() {
                       <div key={idx} onClick={() => viewReturnDetails(eventItems)} className={`bg-card border ${isHighValue ? 'border-red-500/50' : 'border-amber-500/30'} rounded-xl p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-sm hover:border-amber-500/50 hover:bg-amber-50/50 dark:hover:bg-amber-950/20 cursor-pointer transition-colors group`}>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-bold text-lg">{first.supplier}</h4>
+                            <Link
+                              href={getCompanyProfileUrl(first.supplier)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="font-bold text-lg hover:text-cyan-500 hover:underline transition-colors"
+                              title={lang === "ar" ? "فتح ملف الشركة وسجلها الكامل" : "Open Full Company Profile"}
+                            >
+                              {first.supplier}
+                            </Link>
                             <span className="bg-amber-500 text-white text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full font-bold">Awaiting Payment</span>
                             <span className="bg-muted text-muted-foreground text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full font-bold border border-border">{first.returnNumber || "Legacy Return"}</span>
                             {isHighValue && (
@@ -844,7 +859,14 @@ export default function SupplierReturnsDashboard() {
                       <div key={idx} onClick={() => viewReturnDetails(eventItems)} className={`bg-card border ${isHighValue ? 'border-red-500/50' : 'border-border'} rounded-xl p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 opacity-80 hover:opacity-100 hover:bg-muted/30 cursor-pointer transition-all`}>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-bold text-lg">{first.supplier}</h4>
+                            <Link
+                              href={getCompanyProfileUrl(first.supplier)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="font-bold text-lg hover:text-cyan-500 hover:underline transition-colors"
+                              title={lang === "ar" ? "فتح ملف الشركة وسجلها الكامل" : "Open Full Company Profile"}
+                            >
+                              {first.supplier}
+                            </Link>
                             <span className="bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full font-bold border border-border">Settled</span>
                             <span className="bg-muted text-muted-foreground text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full font-bold border border-border">{first.returnNumber || "Legacy Return"}</span>
                             {isHighValue && (

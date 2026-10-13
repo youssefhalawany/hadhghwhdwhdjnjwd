@@ -99,7 +99,8 @@ import { CSS } from '@dnd-kit/utilities';
 import QRCode from "react-qr-code";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, AreaChart, Area, ComposedChart, Line, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Cell } from "recharts";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { getCompanyProfileUrl } from "@/lib/companiesLedgerService";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import dynamic from "next/dynamic";
@@ -234,9 +235,14 @@ function SortableInvoiceCard({ credit, onSelect, onStatusChange }: { credit: Cre
           <div className="w-7 h-7 rounded-lg bg-indigo-950/80 border border-indigo-700/40 flex items-center justify-center font-black text-indigo-300 text-xs shrink-0">
             {credit.companyName.substring(0, 2).toUpperCase()}
           </div>
-          <h4 className="font-bold text-white capitalize text-sm truncate group-hover:text-indigo-300 transition-colors">
+          <Link
+            href={getCompanyProfileUrl(credit.companyName)}
+            onClick={(e) => e.stopPropagation()}
+            className="font-bold text-white capitalize text-sm truncate hover:text-cyan-400 hover:underline transition-colors block"
+            title="Open Full Company Profile"
+          >
             {credit.companyName}
-          </h4>
+          </Link>
           {credit.isEdited && (
             <span className="text-[10px] bg-amber-950/60 text-amber-400 border border-amber-800/60 px-1.5 py-0.2 rounded font-bold shrink-0 flex items-center gap-0.5" title="Edited">
               <Pencil size={9} />
@@ -424,6 +430,16 @@ export default function CreditsPage() {
   const [suppliers, setSuppliers] = useState<{ id: string; name: string }[]>([]);
   const [showAddSupplier, setShowAddSupplier] = useState(false);
   const [newSupplierName, setNewSupplierName] = useState("");
+
+  // Auto-fill from deep linking (e.g. New Credit Invoice shortcut from Company Profile)
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const qComp = searchParams.get("companyName") || searchParams.get("company");
+    if (qComp) {
+      setCompanyName(qComp);
+      setShowAddModal(true);
+    }
+  }, [searchParams]);
 
   // Edit Credit State (Admin Only)
   const [editingCredit, setEditingCredit] = useState<Credit | null>(null);
@@ -3739,11 +3755,19 @@ html, body {
 
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
-                          <button 
-                            onClick={() => setSelectedSupplierProfile(credit.companyName)} 
-                            className="text-base sm:text-lg font-black text-white uppercase tracking-tight text-left hover:text-indigo-400 transition-colors underline decoration-dotted decoration-indigo-500/50 underline-offset-4 truncate max-w-[200px] sm:max-w-none cursor-pointer"
+                          <Link 
+                            href={getCompanyProfileUrl(credit.companyName)} 
+                            className="text-base sm:text-lg font-black text-white uppercase tracking-tight text-left hover:text-cyan-400 transition-colors underline decoration-dotted decoration-cyan-500/50 underline-offset-4 truncate max-w-[200px] sm:max-w-none cursor-pointer inline-block"
+                            title={isAr ? "فتح ملف وسجل الشركة الشامل" : "Open Full Company Profile"}
                           >
                             {credit.companyName}
+                          </Link>
+                          <button 
+                            onClick={() => setSelectedSupplierProfile(credit.companyName)} 
+                            className="text-xs text-slate-500 hover:text-indigo-400 transition-colors p-0.5 rounded cursor-pointer"
+                            title={isAr ? "نظرة سريعة" : "Quick Stats"}
+                          >
+                            ℹ️
                           </button>
                           
                           {/* Modern Status Badges */}
