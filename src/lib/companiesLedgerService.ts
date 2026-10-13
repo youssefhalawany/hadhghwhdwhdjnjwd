@@ -122,8 +122,43 @@ export function getCompanyProfileUrl(rawName: string): string {
   return `/financials/companies-profiles?company=${encodeURIComponent(normalizeCompanyName(rawName))}`;
 }
 
-const CACHE_KEY = "companies_profiles_ledger_v1";
-const FALLBACK_LOCALSTORAGE_KEY = "companies_profiles_ledger_fallback_v1";
+const CACHE_KEY = "companies_profiles_ledger_v2";
+const FALLBACK_LOCALSTORAGE_KEY = "companies_profiles_ledger_fallback_v2";
+
+export function sanitizeCompanyProfile(p: any): CompanyProfile {
+  return {
+    id: p?.id || "",
+    name: p?.name || "",
+    aliases: Array.isArray(p?.aliases) ? p.aliases : [],
+    totalPaid: Number(p?.totalPaid || 0),
+    totalInvoiced: Number(p?.totalInvoiced || 0),
+    totalCreditPaid: Number(p?.totalCreditPaid || 0),
+    remainingCredit: Number(p?.remainingCredit || 0),
+    totalReturnsValue: Number(p?.totalReturnsValue || 0),
+    totalReturnsCount: Number(p?.totalReturnsCount || 0),
+    totalExpiriesValue: Number(p?.totalExpiriesValue || 0),
+    totalExpiriesCount: Number(p?.totalExpiriesCount || 0),
+    netBalance: Number(p?.netBalance || p?.remainingCredit || 0),
+    firstActivityDate: p?.firstActivityDate || "",
+    lastActivityDate: p?.lastActivityDate || "",
+    activityCount: Number(p?.activityCount || (Array.isArray(p?.events) ? p.events.length : 0)),
+    paymentCount: Number(p?.paymentCount || 0),
+    creditCount: Number(p?.creditCount || 0),
+    returnCount: Number(p?.returnCount || 0),
+    expiryCount: Number(p?.expiryCount || 0),
+    chequeCount: Number(p?.chequeCount || 0),
+    paymentMethods: {
+      cash: Number(p?.paymentMethods?.cash || 0),
+      bankTransfer: Number(p?.paymentMethods?.bankTransfer || 0),
+      cheque: Number(p?.paymentMethods?.cheque || 0),
+      other: Number(p?.paymentMethods?.other || 0),
+    },
+    contacts: Array.isArray(p?.contacts) ? p.contacts : [],
+    bankingInfo: p?.bankingInfo || undefined,
+    monthlySpend: Array.isArray(p?.monthlySpend) ? p.monthlySpend : [],
+    events: Array.isArray(p?.events) ? p.events : [],
+  };
+}
 
 /**
  * Normalizes raw company names to group variations like
@@ -211,12 +246,17 @@ export async function loadCompaniesFromLocalCache(): Promise<{
 } | null> {
   if (typeof window === "undefined") return null;
 
+  // Purge legacy v1 caches if still present
+  try {
+    localStorage.removeItem("companies_profiles_ledger_fallback_v1");
+  } catch (_) {}
+
   try {
     // 1. Try IndexedDB
     const entry = await getCacheEntry(CACHE_KEY);
     if (entry && entry.data && Array.isArray(entry.data.profiles)) {
       return {
-        profiles: entry.data.profiles,
+        profiles: entry.data.profiles.map(sanitizeCompanyProfile),
         summary: entry.data.summary,
         cachedAt: entry.timestamp || entry.data.summary?.lastSyncedAt || Date.now(),
       };
@@ -232,7 +272,7 @@ export async function loadCompaniesFromLocalCache(): Promise<{
       const parsed = JSON.parse(fallbackStr);
       if (parsed && Array.isArray(parsed.profiles)) {
         return {
-          profiles: parsed.profiles,
+          profiles: parsed.profiles.map(sanitizeCompanyProfile),
           summary: parsed.summary,
           cachedAt: parsed.cachedAt || Date.now(),
         };
@@ -270,13 +310,16 @@ export async function saveCompaniesToLocalCache(
 
   // 2. Save compact version into LocalStorage (strip raw objects to avoid quota limits)
   try {
-    const compactProfiles = profiles.map((p) => ({
-      ...p,
-      events: p.events.map((e) => {
-        const { raw, ...cleanEvent } = e;
-        return cleanEvent;
-      }),
-    }));
+    const compactProfiles = profiles.map((rawP) => {
+      const p = sanitizeCompanyProfile(rawP);
+      return {
+        ...p,
+        events: (p.events || []).map((e) => {
+          const { raw, ...cleanEvent } = e;
+          return cleanEvent;
+        }),
+      };
+    });
 
     safeSetLocalStorage(
       FALLBACK_LOCALSTORAGE_KEY,

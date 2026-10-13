@@ -47,6 +47,7 @@ import {
   CompaniesLedgerSummary,
   loadCompaniesFromLocalCache,
   syncCompaniesProfiles,
+  sanitizeCompanyProfile,
 } from "@/lib/companiesLedgerService";
 import { exportToExcel } from "@/lib/excel-generator";
 import QRCode from "react-qr-code";
@@ -88,14 +89,15 @@ export default function CompaniesProfilesPage() {
         const cached = await loadCompaniesFromLocalCache();
         if (cached && cached.profiles && cached.profiles.length > 0) {
           if (!isMounted) return;
-          setProfiles(cached.profiles);
+          const sanitized = cached.profiles.map(sanitizeCompanyProfile);
+          setProfiles(sanitized);
           setSummary(cached.summary);
           setLastSyncedAt(cached.cachedAt);
           setIsFromCache(true);
           setLoading(false);
           // Auto select first company if none selected on desktop
-          if (!selectedCompanyId && cached.profiles.length > 0 && typeof window !== "undefined" && window.innerWidth >= 1024) {
-            setSelectedCompanyId(cached.profiles[0].id);
+          if (!selectedCompanyId && sanitized.length > 0 && typeof window !== "undefined" && window.innerWidth >= 1024) {
+            setSelectedCompanyId(sanitized[0].id);
           }
           return;
         }
@@ -129,18 +131,19 @@ export default function CompaniesProfilesPage() {
       const result = await syncCompaniesProfiles((step) => {
         setSyncStep(step);
       });
-      setProfiles(result.profiles);
+      const sanitized = result.profiles.map(sanitizeCompanyProfile);
+      setProfiles(sanitized);
       setSummary(result.summary);
       setLastSyncedAt(result.summary.lastSyncedAt);
       setIsFromCache(false);
-      if (!selectedCompanyId && result.profiles.length > 0) {
-        setSelectedCompanyId(result.profiles[0].id);
+      if (!selectedCompanyId && sanitized.length > 0) {
+        setSelectedCompanyId(sanitized[0].id);
       }
       if (notify) {
         toast.success(
           isAr
-            ? `تم تحديث وحفظ بيانات ${result.profiles.length} شركة محلياً بنجاح`
-            : `Successfully synced & cached ${result.profiles.length} companies`
+            ? `تم تحديث وحفظ بيانات ${sanitized.length} شركة محلياً بنجاح`
+            : `Successfully synced & cached ${sanitized.length} companies`
         );
       }
     } catch (err) {
@@ -156,17 +159,19 @@ export default function CompaniesProfilesPage() {
   // Active selected company
   const activeCompany = useMemo(() => {
     if (!selectedCompanyId) return null;
-    return profiles.find((p) => p.id === selectedCompanyId) || null;
+    const found = profiles.find((p) => p.id === selectedCompanyId);
+    return found ? sanitizeCompanyProfile(found) : null;
   }, [profiles, selectedCompanyId]);
 
   // Filtered companies list for the left panel
   const filteredProfiles = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    return profiles.filter((p) => {
+    return profiles.filter((rawP) => {
+      const p = sanitizeCompanyProfile(rawP);
       if (q) {
-        const inName = p.name.toLowerCase().includes(q);
-        const inAlias = p.aliases.some((a) => a.toLowerCase().includes(q));
-        const inEvents = p.events.some(
+        const inName = (p.name || "").toLowerCase().includes(q);
+        const inAlias = (p.aliases || []).some((a) => a.toLowerCase().includes(q));
+        const inEvents = (p.events || []).some(
           (e) =>
             (e.invoiceNumber && e.invoiceNumber.toLowerCase().includes(q)) ||
             (e.poNumber && e.poNumber.toLowerCase().includes(q)) ||
@@ -185,7 +190,7 @@ export default function CompaniesProfilesPage() {
   const filteredEvents = useMemo(() => {
     if (!activeCompany) return [];
     const q = detailQuery.trim().toLowerCase();
-    return activeCompany.events.filter((e) => {
+    return (activeCompany.events || []).filter((e) => {
       if (detailTab === "payments" && e.type !== "payment") return false;
       if (detailTab === "credits" && e.type !== "credit") return false;
       if (detailTab === "returns" && e.type !== "return") return false;
@@ -223,7 +228,7 @@ export default function CompaniesProfilesPage() {
   const handleExportExcel = async () => {
     if (!activeCompany) return;
     try {
-      const rows = activeCompany.events.map((e) => ({
+      const rows = (activeCompany.events || []).map((e) => ({
         date: e.date,
         type: e.type.toUpperCase(),
         title: e.titleAr || e.title,
@@ -510,10 +515,10 @@ export default function CompaniesProfilesPage() {
                             <h2 className="text-lg sm:text-xl font-black text-white">{activeCompany.name}</h2>
                             <BadgeCheck className="w-4 h-4 text-cyan-400" />
                           </div>
-                          {activeCompany.aliases.length > 1 && (
+                          {(activeCompany.aliases || []).length > 1 && (
                             <p className="text-[11px] text-slate-400 mt-0.5">
                               <span className="text-slate-500 font-bold">{isAr ? "معرفات مسجلة: " : "Aliases: "}</span>
-                              {activeCompany.aliases.slice(0, 4).join(" • ")}
+                              {(activeCompany.aliases || []).slice(0, 4).join(" • ")}
                             </p>
                           )}
                         </div>
@@ -663,11 +668,11 @@ export default function CompaniesProfilesPage() {
                           <span>{isAr ? "المندوبون وسائقو الاستلام المعتمدون" : "Verified Contacts & Delivery Reps"}</span>
                         </div>
                         <span className="text-[10px] font-mono text-slate-500 bg-white/[0.04] px-2 py-0.5 rounded-full">
-                          {activeCompany.contacts.length} {isAr ? "جهة اتصال" : "contacts"}
+                          {(activeCompany.contacts?.length || 0)} {isAr ? "جهة اتصال" : "contacts"}
                         </span>
                       </div>
 
-                      {activeCompany.contacts.length === 0 ? (
+                      {(!activeCompany.contacts || activeCompany.contacts.length === 0) ? (
                         <div className="py-6 text-center text-slate-500 text-xs">
                           <UserCheck className="w-6 h-6 mx-auto mb-1.5 text-slate-600" />
                           <p className="font-medium">
@@ -678,7 +683,7 @@ export default function CompaniesProfilesPage() {
                         </div>
                       ) : (
                         <div className="space-y-2 max-h-56 overflow-y-auto no-scrollbar pr-1">
-                          {activeCompany.contacts.map((c, idx) => (
+                          {(activeCompany.contacts || []).map((c, idx) => (
                             <div
                               key={`${c.name}_${idx}`}
                               className="p-2.5 rounded-xl bg-[#090E1A] border border-white/[0.04] flex items-center justify-between gap-3 text-xs"
@@ -837,14 +842,14 @@ export default function CompaniesProfilesPage() {
                         </div>
                       </div>
 
-                      {activeCompany.monthlySpend.length === 0 ? (
+                      {(!activeCompany.monthlySpend || activeCompany.monthlySpend.length === 0) ? (
                         <div className="py-8 text-center text-slate-500 text-xs">
                           <p>{isAr ? "لا توجد بيانات شهرية كافية للرسم البياني" : "Not enough monthly records for trend chart"}</p>
                         </div>
                       ) : (
                         <div className="space-y-3 pt-2">
                           {(() => {
-                            const points = activeCompany.monthlySpend.slice(-6); // last 6 active months
+                            const points = (activeCompany.monthlySpend || []).slice(-6); // last 6 active months
                             const maxVal = Math.max(1, ...points.map((p) => Math.max(p.invoiced, p.paid)));
                             return (
                               <div className="space-y-2.5">
@@ -900,9 +905,12 @@ export default function CompaniesProfilesPage() {
 
                       {(() => {
                         const total = activeCompany.totalPaid || 1;
-                        const cashPct = Math.round((activeCompany.paymentMethods.cash / total) * 100);
-                        const bankPct = Math.round((activeCompany.paymentMethods.bankTransfer / total) * 100);
-                        const chqPct = Math.round((activeCompany.paymentMethods.cheque / total) * 100);
+                        const cashVal = activeCompany.paymentMethods?.cash || 0;
+                        const bankVal = activeCompany.paymentMethods?.bankTransfer || 0;
+                        const chqVal = activeCompany.paymentMethods?.cheque || 0;
+                        const cashPct = Math.round((cashVal / total) * 100);
+                        const bankPct = Math.round((bankVal / total) * 100);
+                        const chqPct = Math.round((chqVal / total) * 100);
                         const digitalPct = bankPct + chqPct;
 
                         return (
@@ -922,7 +930,7 @@ export default function CompaniesProfilesPage() {
                                   <span className="font-bold text-white">{isAr ? "نقداً من الخزينة" : "Cash (Safe)"}</span>
                                 </div>
                                 <div className="text-right rtl:text-left font-mono">
-                                  <span className="font-bold text-emerald-400">{fmt(activeCompany.paymentMethods.cash)} ج.م</span>
+                                  <span className="font-bold text-emerald-400">{fmt(cashVal)} ج.م</span>
                                   <span className="text-[10px] text-slate-500 ml-1.5 rtl:ml-0 rtl:mr-1.5">({cashPct}%)</span>
                                 </div>
                               </div>
@@ -933,7 +941,7 @@ export default function CompaniesProfilesPage() {
                                   <span className="font-bold text-white">{isAr ? "تحويل بنكي إلكتروني" : "Bank Transfer"}</span>
                                 </div>
                                 <div className="text-right rtl:text-left font-mono">
-                                  <span className="font-bold text-cyan-400">{fmt(activeCompany.paymentMethods.bankTransfer)} ج.م</span>
+                                  <span className="font-bold text-cyan-400">{fmt(bankVal)} ج.م</span>
                                   <span className="text-[10px] text-slate-500 ml-1.5 rtl:ml-0 rtl:mr-1.5">({bankPct}%)</span>
                                 </div>
                               </div>
@@ -944,7 +952,7 @@ export default function CompaniesProfilesPage() {
                                   <span className="font-bold text-white">{isAr ? "شيكات بنكية" : "Cheques"}</span>
                                 </div>
                                 <div className="text-right rtl:text-left font-mono">
-                                  <span className="font-bold text-purple-400">{fmt(activeCompany.paymentMethods.cheque)} ج.م</span>
+                                  <span className="font-bold text-purple-400">{fmt(chqVal)} ج.م</span>
                                   <span className="text-[10px] text-slate-500 ml-1.5 rtl:ml-0 rtl:mr-1.5">({chqPct}%)</span>
                                 </div>
                               </div>
@@ -1284,7 +1292,7 @@ export default function CompaniesProfilesPage() {
                   <span className="text-[10px] uppercase font-bold text-slate-500">{isAr ? "اسم الشركة / المورد:" : "Vendor:"}</span>
                   <div className="text-base font-black text-slate-900">{activeCompany.name}</div>
                   <div className="text-xs text-slate-600 mt-0.5">
-                    {activeCompany.aliases.length > 1 ? `المعرفات: ${activeCompany.aliases.slice(0, 3).join(", ")}` : "مورد معتمد"}
+                    {(activeCompany.aliases || []).length > 1 ? `المعرفات: ${(activeCompany.aliases || []).slice(0, 3).join(", ")}` : "مورد معتمد"}
                   </div>
                 </div>
                 <div className="text-right rtl:text-left">
@@ -1335,7 +1343,7 @@ export default function CompaniesProfilesPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {activeCompany.events.slice(0, 50).map((ev, i) => (
+                      {(activeCompany.events || []).slice(0, 50).map((ev, i) => (
                         <tr key={i} className="hover:bg-slate-50">
                           <td className="p-2 font-mono text-[11px]">{ev.date}</td>
                           <td className="p-2 font-bold">{ev.titleAr || ev.title}</td>
