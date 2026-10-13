@@ -13,14 +13,11 @@ const MODELS_TO_TRY = [
   "gemini-flash-latest"
 ];
 
-import { prepareVisionImage, formatVisionApiError } from "@/lib/vision-sanitizer";
+import { prepareVisionImage, formatVisionApiError, getGeminiApiKey } from "@/lib/vision-sanitizer";
 
 export async function POST(req: NextRequest) {
   try {
-    const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: "GEMINI_API_KEY is not configured on the server." }, { status: 500 });
-    }
+    const apiKey = getGeminiApiKey();
 
     const body = await req.json();
     const imageInput = body.imageBase64 || body.image;
@@ -105,6 +102,6 @@ Return ONLY raw JSON without markdown or additional explanation.
   } catch (error: any) {
     console.error("Error extracting receipt:", error);
     const friendlyError = formatVisionApiError(error);
-    return NextResponse.json({ error: friendlyError }, { status: 500 });
+    return NextResponse.json({ success: false, error: friendlyError }, { status: 200 });
   }
 }

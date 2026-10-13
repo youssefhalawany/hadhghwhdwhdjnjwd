@@ -5,8 +5,9 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-const GEMINI_KEY = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || Buffer.from("QVEuQWI4Uk42SVU0c1ZROGRHRE9OTWlvRnV3VWw2WkNMeEJLYkt3ZlZ2Rk5fUldNTWhpb1E=", "base64").toString("utf-8");
-const genAI = new GoogleGenerativeAI(GEMINI_KEY);
+import { getGeminiApiKey } from "@/lib/vision-sanitizer";
+
+const genAI = new GoogleGenerativeAI(getGeminiApiKey());
 
 // High-speed vision model list with graceful fallback
 async function generateFastPOExtraction(prompt: string, inlineData: { data: string; mimeType: string }) {
@@ -66,7 +67,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No image provided" }, { status: 400 });
     }
 
-    if (!GEMINI_KEY) {
+    const apiKey = getGeminiApiKey();
+    if (!apiKey) {
       return NextResponse.json({ error: "Gemini API key is not configured on the server." }, { status: 500 });
     }
 
@@ -138,6 +140,6 @@ Return ONLY a valid JSON object matching this exact schema:
     if (error?.status === 429) {
       return NextResponse.json({ error: "RATE_LIMIT" }, { status: 429 });
     }
-    return NextResponse.json({ error: formatVisionApiError(error) }, { status: 500 });
+    return NextResponse.json({ error: formatVisionApiError(error) }, { status: 200 });
   }
 }

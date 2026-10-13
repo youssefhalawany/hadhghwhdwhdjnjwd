@@ -3,8 +3,9 @@ dotenv.config({ path: ".env.local" });
 import { getAdminDb } from "../src/lib/firebase-admin";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const GEMINI_KEY = process.env.GEMINI_API_KEY || "";
-const genAI = new GoogleGenerativeAI(GEMINI_KEY);
+import { prepareVisionImage, getGeminiApiKey } from "../src/lib/vision-sanitizer";
+
+const genAI = new GoogleGenerativeAI(getGeminiApiKey());
 
 function normalizeName(name: string): string {
   if (!name) return "";
@@ -20,8 +21,6 @@ function normalizeName(name: string): string {
   if (n.includes("mars") || n.includes("مارس")) return "mars egypt";
   return n;
 }
-
-import { prepareVisionImage } from "../src/lib/vision-sanitizer";
 
 const MODELS_TO_TRY = [
   "gemini-3.1-flash-lite",

@@ -1,19 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const apiKey = process.env.GEMINI_API_KEY;
+import { getGeminiApiKey } from "@/lib/vision-sanitizer";
 
 export async function POST(req: NextRequest) {
-  if (!apiKey) {
-    return NextResponse.json({ error: "Missing Gemini API Key." }, { status: 500 });
-  }
-
   try {
+    const apiKey = getGeminiApiKey();
     const data = await req.json();
     const { reportData, historicalContext, comparisonData, type } = data;
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+    const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
 
     const prompt = `
 You are an expert retail convenience store operations manager. 

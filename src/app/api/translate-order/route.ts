@@ -1,18 +1,17 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
+import { getGeminiApiKey } from "@/lib/vision-sanitizer";
+
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
     const { supplierName, branchName, items } = await req.json();
 
-    if (!process.env.GEMINI_API_KEY) {
-      return NextResponse.json({ error: "No Gemini API key found" }, { status: 500 });
-    }
-
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash-lite" });
+    const apiKey = getGeminiApiKey();
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
 
     // Construct the prompt
     const itemsList = items.map((i: any) => `- ${i.description} (Qty: ${i.quantity})`).join('\n');

@@ -13,14 +13,11 @@ const MODELS_TO_TRY = [
   "gemini-flash-latest"
 ];
 
-import { prepareVisionImage, formatVisionApiError } from "@/lib/vision-sanitizer";
+import { prepareVisionImage, formatVisionApiError, getGeminiApiKey } from "@/lib/vision-sanitizer";
 
 export async function POST(req: NextRequest) {
   try {
-    const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: "GEMINI_API_KEY is not set in the environment variables." }, { status: 500 });
-    }
+    const apiKey = getGeminiApiKey();
 
     const body = await req.json();
     const imageInput = body.imageBase64 || body.image;

@@ -6,12 +6,9 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const GEMINI_KEY =
-  process.env.GEMINI_API_KEY ||
-  process.env.NEXT_PUBLIC_GEMINI_API_KEY ||
-  "";
+import { prepareVisionImage, formatVisionApiError, getGeminiApiKey } from "@/lib/vision-sanitizer";
 
-const genAI = new GoogleGenerativeAI(GEMINI_KEY);
+const genAI = new GoogleGenerativeAI(getGeminiApiKey());
 
 const MODELS_TO_TRY = [
   "gemini-3.1-flash-lite",
@@ -20,8 +17,6 @@ const MODELS_TO_TRY = [
   "gemini-3.6-flash",
   "gemini-flash-latest",
 ];
-
-import { prepareVisionImage, formatVisionApiError } from "@/lib/vision-sanitizer";
 
 export async function extractBankReceiptData(receiptBase64OrUrl: string): Promise<any> {
   const { base64Data, mimeType } = await prepareVisionImage(receiptBase64OrUrl);
@@ -110,7 +105,7 @@ export async function GET() {
       pendingCount,
     });
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: err.message }, { status: 200 });
   }
 }
 
@@ -230,6 +225,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (err: any) {
     console.error("Error in extract-bank-receipts route:", err);
-    return NextResponse.json({ error: formatVisionApiError(err) }, { status: 500 });
+    return NextResponse.json({ success: false, error: formatVisionApiError(err) }, { status: 200 });
   }
 }
